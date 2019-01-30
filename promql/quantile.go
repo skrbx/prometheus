@@ -83,6 +83,7 @@ func bucketQuantile(q float64, buckets buckets) float64 {
 		return math.NaN()
 	}
 
+	buckets = coalesceBuckets(buckets)
 	ensureMonotonic(buckets)
 
 	rank := q * buckets[len(buckets)-1].count
@@ -105,6 +106,25 @@ func bucketQuantile(q float64, buckets buckets) float64 {
 		rank -= buckets[b-1].count
 	}
 	return bucketStart + (bucketEnd-bucketStart)*(rank/count)
+}
+
+// coalesceBuckets merges buckets with the same upper bound.
+//
+// The input buckets must be sorted.
+func coalesceBuckets(buckets buckets) buckets {
+	last := buckets[0]
+	i := 0
+	for _, b := range buckets[1:] {
+		if b.upperBound == last.upperBound {
+			last.count += b.count
+		} else {
+			buckets[i] = last
+			last = b
+			i++
+		}
+	}
+	buckets[i] = last
+	return buckets[:i+1]
 }
 
 // The assumption that bucket counts increase monotonically with increasing
